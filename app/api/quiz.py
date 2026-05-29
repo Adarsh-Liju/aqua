@@ -40,6 +40,13 @@ async def quiz(request: Request, session: SessionDep, quiz_id: int | None = None
     ])
 
     players_json = "null"
+
+    def _players_to_json(player_list):
+        return json.dumps([
+            {"id": p.id, "name": p.name, "turn_order": p.turn_order}
+            for p in player_list
+        ])
+
     if player_id is not None:
         current_player = session.get(Players, player_id)
         if current_player:
@@ -48,10 +55,23 @@ async def quiz(request: Request, session: SessionDep, quiz_id: int | None = None
                 .where(Players.user_id == current_player.user_id)
                 .order_by(Players.turn_order)
             ).all()
-            players_json = json.dumps([
-                {"id": p.id, "name": p.name, "turn_order": p.turn_order}
-                for p in session_players
-            ])
+            players_json = _players_to_json(session_players)
+    else:
+        # No player_id given — load players from the session cookie and default to player 1
+        raw_uid = request.cookies.get("user_id")
+        if raw_uid:
+            try:
+                uid = int(raw_uid)
+                session_players = session.exec(
+                    select(Players)
+                    .where(Players.user_id == uid)
+                    .order_by(Players.turn_order)
+                ).all()
+                if session_players:
+                    players_json = _players_to_json(session_players)
+                    player_id = session_players[0].id
+            except (ValueError, TypeError):
+                pass
 
     return templates.TemplateResponse(
         request, "quiz.html", {
