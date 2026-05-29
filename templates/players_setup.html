@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>AQUA - Player Setup</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-lg">
+
+        <div class="text-center mb-8">
+            <p class="text-xs font-semibold tracking-widest text-cyan-400 uppercase mb-1">AQUA</p>
+            <h1 class="text-2xl font-bold text-white">Set Up Players</h1>
+            <p class="text-slate-400 text-sm mt-1">Welcome, {{ user.username }} — add 2 to 8 players to get started</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-4 px-4 py-3 bg-red-950 border border-red-700 rounded-xl text-red-300 text-sm">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="/players/setup"
+            class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8 space-y-4">
+
+            <div id="players-container" class="space-y-3">
+                <div class="player-row flex items-center gap-2">
+                    <span class="text-slate-500 text-sm w-6 text-right shrink-0">1</span>
+                    <input name="player_name" type="text" required maxlength="32"
+                        placeholder="Player 1 name"
+                        class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
+                               placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1
+                               focus:ring-cyan-500 transition-colors duration-150">
+                </div>
+                <div class="player-row flex items-center gap-2">
+                    <span class="text-slate-500 text-sm w-6 text-right shrink-0">2</span>
+                    <input name="player_name" type="text" required maxlength="32"
+                        placeholder="Player 2 name"
+                        class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
+                               placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1
+                               focus:ring-cyan-500 transition-colors duration-150">
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-1">
+                <button type="button" id="add-btn" onclick="addPlayer()"
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl
+                           text-sm font-medium text-slate-300 transition-colors duration-150">
+                    + Add Player
+                </button>
+                <button type="button" id="remove-btn" onclick="removePlayer()" disabled
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl
+                           text-sm font-medium text-slate-500 transition-colors duration-150
+                           disabled:opacity-40 disabled:cursor-not-allowed">
+                    − Remove
+                </button>
+            </div>
+
+            <div class="pt-2">
+                <button type="submit"
+                    class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold text-white
+                           transition-colors duration-200">
+                    Start Game
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+    <script>
+        const MIN = 2, MAX = 8;
+        let count = 2;
+
+        const container = document.getElementById('players-container');
+        const addBtn = document.getElementById('add-btn');
+        const removeBtn = document.getElementById('remove-btn');
+
+        function updateButtons() {
+            addBtn.disabled = count >= MAX;
+            removeBtn.disabled = count <= MIN;
+        }
+
+        function addPlayer() {
+            if (count >= MAX) return;
+            count++;
+            const row = document.createElement('div');
+            row.className = 'player-row flex items-center gap-2';
+            row.innerHTML = `
+                <span class="text-slate-500 text-sm w-6 text-right shrink-0">${count}</span>
+                <input name="player_name" type="text" maxlength="32"
+                    placeholder="Player ${count} name"
+                    class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-slate-100
+                           placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1
+                           focus:ring-cyan-500 transition-colors duration-150">
+            `;
+            container.appendChild(row);
+            updateButtons();
+        }
+
+        function removePlayer() {
+            if (count <= MIN) return;
+            container.lastElementChild.remove();
+            count--;
+            updateButtons();
+        }
+    </script>
+
+</body>
+
+</html>

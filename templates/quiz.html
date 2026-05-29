@@ -8,19 +8,25 @@
 
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
 
-    <div class="w-full max-w-2xl">
+    <div class="w-full max-w-2xl space-y-4">
 
         <!-- Header -->
-        <div class="text-center mb-8">
+        <div class="text-center">
             <p class="text-xs font-semibold tracking-widest text-cyan-400 uppercase mb-1">AQUA</p>
             <h1 class="text-2xl font-bold text-white">{{ quiz.title }}</h1>
             <p class="text-sm text-slate-400 mt-1">{{ quiz.topic }}</p>
         </div>
 
+        <!-- Player scoreboard (shown only in multiplayer) -->
+        <div id="players-header" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-3">Players</p>
+            <div id="player-chips" class="flex flex-wrap gap-2"></div>
+        </div>
+
         <!-- Quiz Card -->
         <div id="quiz-card" class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8">
 
-            <!-- Progress Bar -->
+            <!-- Progress -->
             <div class="mb-6">
                 <div class="flex justify-between text-xs text-slate-400 mb-2">
                     <span id="question-counter">Question 1 of {{ questions_count }}</span>
@@ -35,16 +41,22 @@
             </div>
 
             <!-- Question -->
-            <p id="question-text" class="text-lg font-medium text-white mb-6 leading-relaxed">
-                <!-- filled by JS -->
-            </p>
+            <p id="question-text" class="text-lg font-medium text-white mb-6 leading-relaxed"></p>
 
             <!-- Options -->
-            <div id="options" class="grid grid-cols-1 gap-3">
-                <!-- filled by JS -->
+            <div id="options" class="grid grid-cols-1 gap-3"></div>
+
+            <!-- Pass panel (hidden until needed) -->
+            <div id="pass-panel" class="hidden mt-5 pt-4 border-t border-slate-800">
+                <button type="button" id="pass-toggle" onclick="togglePassOptions()"
+                    class="text-sm text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                    <span>Pass question to another player</span>
+                    <span id="pass-arrow">↓</span>
+                </button>
+                <div id="pass-options" class="hidden mt-3 flex flex-wrap gap-2"></div>
             </div>
 
-            <!-- Next Button -->
+            <!-- Next -->
             <button id="next-btn"
                 class="mt-6 w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-semibold text-white transition-colors duration-200 hidden"
                 onclick="nextQuestion()">
@@ -59,16 +71,19 @@
             <h2 class="text-2xl font-bold text-white mb-2">Quiz Complete!</h2>
             <p class="text-slate-400 mb-6">{{ quiz.title }}</p>
 
+            <!-- Per-player summary (multiplayer) -->
+            <div id="player-results-summary" class="hidden mb-6 text-left space-y-2">
+                <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-2">Player Scores</p>
+            </div>
+
             <div class="bg-slate-800 rounded-xl p-6 mb-6">
                 <p class="text-5xl font-bold text-cyan-400 mb-1" id="final-score"></p>
                 <p class="text-slate-400 text-sm" id="final-label"></p>
             </div>
 
-            <div id="results-breakdown" class="text-left space-y-3 mb-6">
-                <!-- filled by JS -->
-            </div>
+            <div id="results-breakdown" class="text-left space-y-3 mb-6"></div>
 
-            <a href="/quiz"
+            <a id="results-action" href="/quiz"
                 class="inline-block w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold text-white transition-colors duration-200">
                 Try Again
             </a>
@@ -77,29 +92,107 @@
     </div>
 
     <script>
-        const questions = {{ questions_json | safe }};
-        let current = 0;
-        let score = 0;
-        let userAnswers = [];
+        const questions   = {{ questions_json | safe }};
+        const PLAYER_ID   = {{ player_id or 'null' }};
+        const QUIZ_ID     = {{ quiz.id }};
+        const PLAYERS     = {{ players_json | safe }};   // null | [{id, name, turn_order}]
 
-        const LABELS = { option_a: "A", option_b: "B", option_c: "C", option_d: "D" };
+        let current         = 0;
+        let score           = 0;
+        let userAnswers     = [];
+        let turnPlayerIdx   = 0;   // whose "official" turn it is
+        let activePlayerIdx = 0;   // who is actually answering right now
+        let playerScores    = {};  // {id: correct_count}
+        let playerAttempts  = {};  // {id: attempt_count}
+
+        const LABELS     = { option_a: "A", option_b: "B", option_c: "C", option_d: "D" };
         const OPTION_KEYS = ["option_a", "option_b", "option_c", "option_d"];
 
-        function renderQuestion() {
-            const q = questions[current];
-            const total = questions.length;
+        // --- Init multiplayer ---
+        if (PLAYERS && PLAYERS.length > 0) {
+            PLAYERS.forEach(p => { playerScores[p.id] = 0; playerAttempts[p.id] = 0; });
+            const startIdx = PLAYERS.findIndex(p => p.id === PLAYER_ID);
+            turnPlayerIdx   = startIdx >= 0 ? startIdx : 0;
+            activePlayerIdx = turnPlayerIdx;
+            document.getElementById("players-header").classList.remove("hidden");
+        }
 
-            document.getElementById("question-counter").textContent =
-                `Question ${current + 1} of ${total}`;
-            document.getElementById("score-display").textContent = `Score: ${score}`;
-            document.getElementById("progress-bar").style.width =
-                `${((current + 1) / total) * 100}%`;
+        // --- Player chip bar ---
+        function renderPlayerChips() {
+            if (!PLAYERS) return;
+            const bar = document.getElementById("player-chips");
+            bar.innerHTML = "";
+            PLAYERS.forEach((p, idx) => {
+                const isActive = idx === activePlayerIdx;
+                const s = playerScores[p.id] ?? 0;
+                const a = playerAttempts[p.id] ?? 0;
+
+                const chip = document.createElement("div");
+                chip.className = [
+                    "flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all duration-200",
+                    isActive
+                        ? "bg-cyan-900/60 border-cyan-600 text-white"
+                        : "bg-slate-800 border-slate-700 text-slate-400"
+                ].join(" ");
+
+                let inner = `<span class="font-semibold ${isActive ? "text-cyan-200" : ""}">${p.name}</span>`;
+                inner += `<span class="text-xs tabular-nums ${isActive ? "text-cyan-400" : "text-slate-500"}">${s}${a > 0 ? "/" + a : ""}</span>`;
+                if (isActive) inner += `<span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0"></span>`;
+                chip.innerHTML = inner;
+                bar.appendChild(chip);
+            });
+        }
+
+        // --- Pass options ---
+        function togglePassOptions() {
+            const panel = document.getElementById("pass-options");
+            const arrow = document.getElementById("pass-arrow");
+            if (panel.classList.toggle("hidden")) {
+                arrow.textContent = "↓";
+            } else {
+                arrow.textContent = "↑";
+                renderPassButtons();
+            }
+        }
+
+        function renderPassButtons() {
+            const panel = document.getElementById("pass-options");
+            panel.innerHTML = "";
+            PLAYERS.forEach((p, idx) => {
+                if (idx === activePlayerIdx) return;
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "px-3 py-2 bg-slate-800 hover:bg-amber-900/50 border border-slate-700 hover:border-amber-700 rounded-xl text-sm text-slate-300 hover:text-amber-200 transition-all";
+                btn.textContent = p.name;
+                btn.onclick = () => passTo(idx);
+                panel.appendChild(btn);
+            });
+        }
+
+        function passTo(idx) {
+            activePlayerIdx = idx;
+            document.getElementById("pass-options").classList.add("hidden");
+            document.getElementById("pass-arrow").textContent = "↓";
+            const ap = PLAYERS[activePlayerIdx];
+            document.getElementById("score-display").textContent = `${ap.name}: ${playerScores[ap.id] ?? 0}`;
+            renderPlayerChips();
+        }
+
+        // --- Core quiz logic ---
+        function renderQuestion() {
+            const q     = questions[current];
+            const total = questions.length;
+            const ap    = PLAYERS ? PLAYERS[activePlayerIdx] : null;
+
+            document.getElementById("question-counter").textContent = `Question ${current + 1} of ${total}`;
+            document.getElementById("score-display").textContent =
+                ap ? `${ap.name}: ${playerScores[ap.id] ?? 0}` : `Score: ${score}`;
+            document.getElementById("progress-bar").style.width = `${((current + 1) / total) * 100}%`;
             document.getElementById("question-text").textContent = q.question_text;
 
             const opts = document.getElementById("options");
             opts.innerHTML = "";
             OPTION_KEYS.forEach(key => {
-                const label = LABELS[key];
                 const btn = document.createElement("button");
                 btn.dataset.key = key;
                 btn.className = [
@@ -111,52 +204,78 @@
                     <span class="flex-shrink-0 w-8 h-8 rounded-full border border-slate-600
                         group-hover:border-cyan-400 flex items-center justify-center
                         text-sm font-bold text-slate-400 group-hover:text-cyan-400
-                        transition-colors duration-150">${label}</span>
+                        transition-colors duration-150">${LABELS[key]}</span>
                     <span class="text-slate-200"></span>`;
                 btn.querySelector("span:last-child").textContent = q[key];
                 btn.onclick = () => selectAnswer(key);
                 opts.appendChild(btn);
             });
 
+            // Pass panel: show only in multiplayer and before answering
+            const passPanel = document.getElementById("pass-panel");
+            if (PLAYERS && PLAYERS.length > 1) {
+                passPanel.classList.remove("hidden");
+                document.getElementById("pass-options").classList.add("hidden");
+                document.getElementById("pass-arrow").textContent = "↓";
+            } else {
+                passPanel.classList.add("hidden");
+            }
+
             document.getElementById("next-btn").classList.add("hidden");
+            renderPlayerChips();
         }
 
         function selectAnswer(selectedKey) {
-            const q = questions[current];
+            const q          = questions[current];
             const correctKey = "option_" + q.correct_option.toLowerCase();
-            userAnswers.push({ question: q, selected: selectedKey, correct: correctKey });
+            const ap         = PLAYERS ? PLAYERS[activePlayerIdx] : null;
+            const isCorrect  = selectedKey === correctKey;
 
-            if (selectedKey === correctKey) score++;
+            userAnswers.push({
+                question:    q,
+                selected:    selectedKey,
+                correct:     correctKey,
+                playerName:  ap ? ap.name : null,
+            });
 
+            if (isCorrect) {
+                score++;
+                if (ap) playerScores[ap.id] = (playerScores[ap.id] ?? 0) + 1;
+            }
+            if (ap) playerAttempts[ap.id] = (playerAttempts[ap.id] ?? 0) + 1;
+
+            document.getElementById("score-display").textContent =
+                ap ? `${ap.name}: ${playerScores[ap.id]}` : `Score: ${score}`;
+
+            // Colour options
             document.querySelectorAll("#options button").forEach(btn => {
                 btn.onclick = null;
                 btn.classList.remove("hover:border-cyan-500", "hover:bg-slate-800");
-
                 if (btn.dataset.key === correctKey) {
                     btn.classList.add("border-emerald-500", "bg-emerald-950", "text-emerald-300");
-                    btn.querySelector("span:first-child").classList.add(
-                        "border-emerald-400", "text-emerald-400"
-                    );
+                    btn.querySelector("span:first-child").classList.add("border-emerald-400", "text-emerald-400");
                 } else if (btn.dataset.key === selectedKey) {
                     btn.classList.add("border-red-500", "bg-red-950", "text-red-300");
-                    btn.querySelector("span:first-child").classList.add(
-                        "border-red-400", "text-red-400"
-                    );
+                    btn.querySelector("span:first-child").classList.add("border-red-400", "text-red-400");
                 } else {
                     btn.classList.add("opacity-40");
                 }
             });
 
-            document.getElementById("score-display").textContent = `Score: ${score}`;
-            document.getElementById("next-btn").classList.remove("hidden");
+            document.getElementById("pass-panel").classList.add("hidden");
+            renderPlayerChips();
 
-            if (current === questions.length - 1) {
-                document.getElementById("next-btn").textContent = "See Results";
-            }
+            const nextBtn = document.getElementById("next-btn");
+            nextBtn.classList.remove("hidden");
+            nextBtn.textContent = current === questions.length - 1 ? "See Results" : "Next";
         }
 
         function nextQuestion() {
             current++;
+            if (PLAYERS) {
+                turnPlayerIdx   = (turnPlayerIdx + 1) % PLAYERS.length;
+                activePlayerIdx = turnPlayerIdx;
+            }
             if (current < questions.length) {
                 renderQuestion();
             } else {
@@ -164,17 +283,38 @@
             }
         }
 
-        function showResults() {
+        async function showResults() {
             document.getElementById("quiz-card").classList.add("hidden");
+            document.getElementById("players-header").classList.add("hidden");
+
             const resultsCard = document.getElementById("results-card");
             resultsCard.classList.remove("hidden");
 
             const pct = Math.round((score / questions.length) * 100);
             document.getElementById("final-score").textContent = `${score} / ${questions.length}`;
-            document.getElementById("final-label").textContent = `${pct}% correct`;
+            document.getElementById("final-label").textContent = `${pct}% correct — total across all players`;
             document.getElementById("result-emoji").textContent =
                 pct >= 80 ? "🎉" : pct >= 50 ? "👍" : "📚";
 
+            // Per-player summary
+            if (PLAYERS) {
+                const summaryEl = document.getElementById("player-results-summary");
+                summaryEl.classList.remove("hidden");
+                PLAYERS.forEach(p => {
+                    const s = playerScores[p.id] ?? 0;
+                    const a = playerAttempts[p.id] ?? 0;
+                    if (a === 0) return;
+                    const pct = Math.round((s / a) * 100);
+                    const row = document.createElement("div");
+                    row.className = "flex items-center justify-between px-4 py-2.5 bg-slate-800 rounded-xl";
+                    row.innerHTML = `
+                        <span class="font-medium text-slate-200">${p.name}</span>
+                        <span class="text-cyan-400 font-bold tabular-nums">${s} / ${a} <span class="text-slate-500 font-normal text-xs">(${pct}%)</span></span>`;
+                    summaryEl.appendChild(row);
+                });
+            }
+
+            // Breakdown per question
             const breakdown = document.getElementById("results-breakdown");
             breakdown.innerHTML = "";
             userAnswers.forEach((a, i) => {
@@ -183,22 +323,58 @@
                 div.className = `rounded-xl p-4 border ${correct
                     ? "border-emerald-800 bg-emerald-950/40"
                     : "border-red-800 bg-red-950/40"}`;
+
                 const p1 = document.createElement("p");
-                p1.className = "text-sm font-medium text-slate-200 mb-2";
+                p1.className = "text-sm font-medium text-slate-200 mb-1";
+
                 const numSpan = document.createElement("span");
                 numSpan.className = "text-slate-500 mr-1";
                 numSpan.textContent = `Q${i + 1}.`;
                 p1.appendChild(numSpan);
+
+                if (a.playerName) {
+                    const ps = document.createElement("span");
+                    ps.className = "text-xs text-cyan-500 mr-2 font-normal";
+                    ps.textContent = `[${a.playerName}]`;
+                    p1.appendChild(ps);
+                }
                 p1.appendChild(document.createTextNode(a.question.question_text));
 
                 const p2 = document.createElement("p");
-                p2.className = `text-xs ${correct ? "text-emerald-400" : "text-red-400"}`;
-                p2.textContent = correct ? "✓ Correct" : `✗ You chose ${LABELS[a.selected]} · Correct: ${LABELS[a.correct]}`;
+                p2.className = `text-xs mt-1 ${correct ? "text-emerald-400" : "text-red-400"}`;
+                p2.textContent = correct
+                    ? "✓ Correct"
+                    : `✗ Chose ${LABELS[a.selected]} · Correct: ${LABELS[a.correct]}`;
 
                 div.appendChild(p1);
                 div.appendChild(p2);
                 breakdown.appendChild(div);
             });
+
+            // Save scores and update action link
+            const actionLink = document.getElementById("results-action");
+            if (PLAYERS) {
+                for (const p of PLAYERS) {
+                    const s = playerScores[p.id] ?? 0;
+                    const a = playerAttempts[p.id] ?? 0;
+                    if (a === 0) continue;
+                    const form = new FormData();
+                    form.append("quiz_id", QUIZ_ID);
+                    form.append("score", s);
+                    form.append("total_questions", a);
+                    try { await fetch(`/players/${p.id}/score`, { method: "POST", body: form }); } catch (_) {}
+                }
+                actionLink.textContent = "Back to Players";
+                actionLink.href = "/players";
+            } else if (PLAYER_ID) {
+                const form = new FormData();
+                form.append("quiz_id", QUIZ_ID);
+                form.append("score", score);
+                form.append("total_questions", questions.length);
+                try { await fetch(`/players/${PLAYER_ID}/score`, { method: "POST", body: form }); } catch (_) {}
+                actionLink.textContent = "Back to Players";
+                actionLink.href = "/players";
+            }
         }
 
         renderQuestion();

@@ -47,3 +47,20 @@ class Answers(SQLModel, table=True):
     question_id: int = Field(foreign_key="questions.id")
     selected_option: str
     is_correct: bool
+
+
+class Players(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    name: str
+    turn_order: int
+
+
+class PlayerScores(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    player_id: int = Field(foreign_key="players.id")
+    quiz_id: int = Field(foreign_key="quizzes.id")
+    score: int
+    total_questions: int
+    # when set, this score has been passed to another player
+    passed_to_player_id: int | None = Field(default=None, foreign_key="players.id")
