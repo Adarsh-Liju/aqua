@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>AQUA - {{ quiz.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <p class="text-xs font-semibold tracking-widest text-cyan-400 uppercase mb-1">AQUA</p>
+            <h1 class="text-2xl font-bold text-white">{{ quiz.title }}</h1>
+            <p class="text-sm text-slate-400 mt-1">{{ quiz.topic }}</p>
+        </div>
+
+        <!-- Quiz Card -->
+        <div id="quiz-card" class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8">
+
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span id="question-counter">Question 1 of {{ questions_count }}</span>
+                    <span id="score-display">Score: 0</span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-1.5">
+                    <div id="progress-bar"
+                        class="bg-cyan-500 h-1.5 rounded-full transition-all duration-500"
+                        style="width: {{ (1 / questions_count * 100) | round(1) }}%">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question -->
+            <p id="question-text" class="text-lg font-medium text-white mb-6 leading-relaxed">
+                <!-- filled by JS -->
+            </p>
+
+            <!-- Options -->
+            <div id="options" class="grid grid-cols-1 gap-3">
+                <!-- filled by JS -->
+            </div>
+
+            <!-- Next Button -->
+            <button id="next-btn"
+                class="mt-6 w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-semibold text-white transition-colors duration-200 hidden"
+                onclick="nextQuestion()">
+                Next
+            </button>
+
+        </div>
+
+        <!-- Results Card (hidden initially) -->
+        <div id="results-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8 text-center">
+            <div class="text-5xl mb-4" id="result-emoji"></div>
+            <h2 class="text-2xl font-bold text-white mb-2">Quiz Complete!</h2>
+            <p class="text-slate-400 mb-6">{{ quiz.title }}</p>
+
+            <div class="bg-slate-800 rounded-xl p-6 mb-6">
+                <p class="text-5xl font-bold text-cyan-400 mb-1" id="final-score"></p>
+                <p class="text-slate-400 text-sm" id="final-label"></p>
+            </div>
+
+            <div id="results-breakdown" class="text-left space-y-3 mb-6">
+                <!-- filled by JS -->
+            </div>
+
+            <a href="/quiz"
+                class="inline-block w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold text-white transition-colors duration-200">
+                Try Again
+            </a>
+        </div>
+
+    </div>
+
+    <script>
+        const questions = {{ questions_json | safe }};
+        let current = 0;
+        let score = 0;
+        let userAnswers = [];
+
+        const LABELS = { option_a: "A", option_b: "B", option_c: "C", option_d: "D" };
+        const OPTION_KEYS = ["option_a", "option_b", "option_c", "option_d"];
+
+        function renderQuestion() {
+            const q = questions[current];
+            const total = questions.length;
+
+            document.getElementById("question-counter").textContent =
+                `Question ${current + 1} of ${total}`;
+            document.getElementById("score-display").textContent = `Score: ${score}`;
+            document.getElementById("progress-bar").style.width =
+                `${((current + 1) / total) * 100}%`;
+            document.getElementById("question-text").textContent = q.question_text;
+
+            const opts = document.getElementById("options");
+            opts.innerHTML = "";
+            OPTION_KEYS.forEach(key => {
+                const label = LABELS[key];
+                const btn = document.createElement("button");
+                btn.dataset.key = key;
+                btn.className = [
+                    "flex items-center gap-4 w-full text-left px-4 py-3 rounded-xl",
+                    "border border-slate-700 hover:border-cyan-500 hover:bg-slate-800",
+                    "transition-all duration-150 group"
+                ].join(" ");
+                btn.innerHTML = `
+                    <span class="flex-shrink-0 w-8 h-8 rounded-full border border-slate-600
+                        group-hover:border-cyan-400 flex items-center justify-center
+                        text-sm font-bold text-slate-400 group-hover:text-cyan-400
+                        transition-colors duration-150">${label}</span>
+                    <span class="text-slate-200"></span>`;
+                btn.querySelector("span:last-child").textContent = q[key];
+                btn.onclick = () => selectAnswer(key);
+                opts.appendChild(btn);
+            });
+
+            document.getElementById("next-btn").classList.add("hidden");
+        }
+
+        function selectAnswer(selectedKey) {
+            const q = questions[current];
+            const correctKey = "option_" + q.correct_option.toLowerCase();
+            userAnswers.push({ question: q, selected: selectedKey, correct: correctKey });
+
+            if (selectedKey === correctKey) score++;
+
+            document.querySelectorAll("#options button").forEach(btn => {
+                btn.onclick = null;
+                btn.classList.remove("hover:border-cyan-500", "hover:bg-slate-800");
+
+                if (btn.dataset.key === correctKey) {
+                    btn.classList.add("border-emerald-500", "bg-emerald-950", "text-emerald-300");
+                    btn.querySelector("span:first-child").classList.add(
+                        "border-emerald-400", "text-emerald-400"
+                    );
+                } else if (btn.dataset.key === selectedKey) {
+                    btn.classList.add("border-red-500", "bg-red-950", "text-red-300");
+                    btn.querySelector("span:first-child").classList.add(
+                        "border-red-400", "text-red-400"
+                    );
+                } else {
+                    btn.classList.add("opacity-40");
+                }
+            });
+
+            document.getElementById("score-display").textContent = `Score: ${score}`;
+            document.getElementById("next-btn").classList.remove("hidden");
+
+            if (current === questions.length - 1) {
+                document.getElementById("next-btn").textContent = "See Results";
+            }
+        }
+
+        function nextQuestion() {
+            current++;
+            if (current < questions.length) {
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById("quiz-card").classList.add("hidden");
+            const resultsCard = document.getElementById("results-card");
+            resultsCard.classList.remove("hidden");
+
+            const pct = Math.round((score / questions.length) * 100);
+            document.getElementById("final-score").textContent = `${score} / ${questions.length}`;
+            document.getElementById("final-label").textContent = `${pct}% correct`;
+            document.getElementById("result-emoji").textContent =
+                pct >= 80 ? "🎉" : pct >= 50 ? "👍" : "📚";
+
+            const breakdown = document.getElementById("results-breakdown");
+            breakdown.innerHTML = "";
+            userAnswers.forEach((a, i) => {
+                const correct = a.selected === a.correct;
+                const div = document.createElement("div");
+                div.className = `rounded-xl p-4 border ${correct
+                    ? "border-emerald-800 bg-emerald-950/40"
+                    : "border-red-800 bg-red-950/40"}`;
+                const p1 = document.createElement("p");
+                p1.className = "text-sm font-medium text-slate-200 mb-2";
+                const numSpan = document.createElement("span");
+                numSpan.className = "text-slate-500 mr-1";
+                numSpan.textContent = `Q${i + 1}.`;
+                p1.appendChild(numSpan);
+                p1.appendChild(document.createTextNode(a.question.question_text));
+
+                const p2 = document.createElement("p");
+                p2.className = `text-xs ${correct ? "text-emerald-400" : "text-red-400"}`;
+                p2.textContent = correct ? "✓ Correct" : `✗ You chose ${LABELS[a.selected]} · Correct: ${LABELS[a.correct]}`;
+
+                div.appendChild(p1);
+                div.appendChild(p2);
+                breakdown.appendChild(div);
+            });
+        }
+
+        renderQuestion();
+    </script>
+
+</body>
+</html>

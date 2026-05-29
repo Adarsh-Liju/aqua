@@ -25,7 +25,7 @@ class Questions(SQLModel, table=True):
 class Users(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str
-    email: str
+    email: str = Field(unique=True)
 
 
 class QuizAttempts(SQLModel, table=True):

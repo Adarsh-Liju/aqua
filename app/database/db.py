@@ -1,16 +1,8 @@
-from sqlmodel import Session
-from sqlmodel import SQLModel
-from sqlmodel import create_engine
-from app import models
+from sqlmodel import Session, SQLModel, create_engine
+from app import models  # noqa: F401 — registers models in metadata
+from app.config import settings
 
-DATABASE_URL = (
-    "mysql+pymysql://adarsh:ala@localhost/aqua"
-)
-
-engine = create_engine(
-    DATABASE_URL,
-    echo=True
-)
+engine = create_engine(settings.database_url, echo=settings.db_echo)
 
 
 def create_db():
