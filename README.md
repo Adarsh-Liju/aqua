@@ -24,10 +24,9 @@ aqua/
 ### users
 ```sql
 CREATE TABLE users (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(100) UNIQUE,
-    email VARCHAR(255) UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    email TEXT NOT NULL
 );
 ```
 
@@ -37,47 +36,24 @@ CREATE TABLE users (
 
 ```sql
 CREATE TABLE quizzes (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255),
-    topic VARCHAR(255),
-    prompt TEXT,
-    created_by BIGINT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (created_by)
-    REFERENCES users(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    topic TEXT NOT NULL
 );
 ```
 
-### Example:
-
-#### title:
-Indian Constitution Quiz
-
-#### topic:
-Indian Polity
-
-prompt:
-Generate a beginner level quiz on Indian Polity
 ### questions
 ```sql
 CREATE TABLE questions (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    quiz_id BIGINT,
-
-    question_text TEXT,
-
-    option_a TEXT,
-    option_b TEXT,
-    option_c TEXT,
-    option_d TEXT,
-
-    correct_option CHAR(1),
-
-    explanation TEXT,
-
-    FOREIGN KEY (quiz_id)
-    REFERENCES quizzes(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quiz_id INTEGER NOT NULL,
+    question_text TEXT NOT NULL,
+    option_a TEXT NOT NULL,
+    option_b TEXT NOT NULL,
+    option_c TEXT NOT NULL,
+    option_d TEXT NOT NULL,
+    correct_option TEXT NOT NULL,
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id)
 );
 ```
 
@@ -85,22 +61,15 @@ CREATE TABLE questions (
 ### quiz_attempts
 ```sql
 CREATE TABLE quiz_attempts (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-
-    user_id BIGINT,
-    quiz_id BIGINT,
-
-    score INT,
-    total_questions INT,
-
-    started_at DATETIME,
-    completed_at DATETIME,
-
-    FOREIGN KEY(user_id)
-    REFERENCES users(id),
-
-    FOREIGN KEY(quiz_id)
-    REFERENCES quizzes(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    quiz_id INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    total_questions INTEGER NOT NULL,
+    started_at DATETIME NOT NULL,
+    completed_at DATETIME NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(quiz_id) REFERENCES quizzes(id)
 );
 ```
 
@@ -110,18 +79,12 @@ Store every answer.
 
 ```sql
 CREATE TABLE answers (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-
-    attempt_id BIGINT,
-    question_id BIGINT,
-
-    selected_option CHAR(1),
-    is_correct BOOLEAN,
-
-    FOREIGN KEY(attempt_id)
-    REFERENCES quiz_attempts(id),
-
-    FOREIGN KEY(question_id)
-    REFERENCES questions(id)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    selected_option TEXT NOT NULL,
+    is_correct BOOLEAN NOT NULL,
+    FOREIGN KEY(attempt_id) REFERENCES quiz_attempts(id),
+    FOREIGN KEY(question_id) REFERENCES questions(id)
 );
 ```
