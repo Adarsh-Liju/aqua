@@ -1,36 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}AQUA — AI Quiz Platform{% endblock %}
 
-<head>
-    <title>AQUA - Autonomous Questioning & Understanding Agent</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
+{% block body %}
+<div class="min-h-screen flex flex-col items-center justify-center px-4 py-16">
 
-<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-0 right-1/4 w-[400px] h-[350px] bg-violet-500/4 rounded-full blur-3xl"></div>
+    </div>
 
-    <div class="w-full max-w-md text-center">
+    <div class="relative w-full max-w-sm text-center">
 
-        <p class="text-xs font-semibold tracking-widest text-cyan-400 uppercase mb-3">AQUA</p>
-        <h1 class="text-4xl font-bold text-white mb-2">Welcome, {{ name }}</h1>
-        <p class="text-slate-400 mb-10">Autonomous Questioning & Understanding Agent</p>
+        <div class="fade-up inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/70 border border-cyan-800/50 text-cyan-400 text-xs font-semibold tracking-widest uppercase mb-8">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            AQUA
+        </div>
 
-        <div class="flex flex-col gap-3">
-            <a href="/register"
-                class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold text-white transition-colors duration-200">
-                Register
+        <h1 class="fade-up d1 text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.1] mb-4">
+            <span class="g-text">Smart</span>
+            <span class="text-white"> Quizzes,</span><br>
+            <span class="text-white">Real</span>
+            <span class="g-text"> Competition</span>
+        </h1>
+
+        <p class="fade-up d2 text-slate-400 text-sm leading-relaxed mb-10 max-w-[270px] mx-auto">
+            AI-generated multiplayer quizzes. Generate any topic, play with friends, and track who's winning.
+        </p>
+
+        <div class="fade-up d2 flex flex-col gap-3 mb-10">
+            <a href="/register" class="btn-primary w-full py-3 rounded-2xl font-semibold text-white text-sm shadow-lg">
+                Get Started Free
             </a>
-            <a href="/login"
-                class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl font-semibold text-slate-200 transition-colors duration-200">
-                Login
+            <a href="/login" class="btn-ghost w-full py-3 rounded-2xl font-semibold text-slate-200 text-sm">
+                Sign In
             </a>
-            <a href="/quiz"
-                class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl font-semibold text-slate-200 transition-colors duration-200">
-                Take a Quiz
+            <a href="/quiz" class="w-full py-2.5 text-slate-500 hover:text-slate-300 text-sm font-medium transition-colors text-center">
+                Try a quick quiz →
             </a>
         </div>
 
+        <div class="fade-up d3 flex flex-wrap justify-center gap-2">
+            <span class="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-500">Multiplayer</span>
+            <span class="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-500">AI-Generated</span>
+            <span class="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-500">Score Tracking</span>
+            <span class="px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-500">Pass Mechanic</span>
+        </div>
+
     </div>
-
-</body>
-
-</html>
+</div>
+{% endblock %}

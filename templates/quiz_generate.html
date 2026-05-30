@@ -1,125 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}AQUA — Generate Quiz{% endblock %}
 
-<head>
-    <title>AQUA - Generate Quiz</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
+{% block body %}
 
-<body class="min-h-screen bg-slate-950 text-slate-100 p-6">
+<nav class="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/85 backdrop-blur-xl">
+    <div class="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        <a href="/" class="text-xs font-bold tracking-widest text-cyan-400 uppercase hover:text-cyan-300 transition-colors">AQUA</a>
+        <a href="/players" class="btn-ghost px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200">
+            ← Players
+        </a>
+    </div>
+</nav>
 
-    <div class="max-w-2xl mx-auto">
+<main class="max-w-2xl mx-auto px-4 py-8">
 
-        <div class="mb-8">
-            <p class="text-xs font-semibold tracking-widest text-cyan-400 uppercase mb-1">AQUA</p>
-            <h1 class="text-2xl font-bold text-white">Generate Quiz</h1>
-            <p class="text-slate-400 text-sm mt-1">
-                Build a prompt, run it in Claude, paste the JSON back here.
-            </p>
-        </div>
-
-        {% if error %}
-        <div class="mb-6 px-4 py-3 bg-red-950 border border-red-700 rounded-xl text-red-300 text-sm">
-            {{ error }}
-        </div>
-        {% endif %}
-
-        <!-- Step 1 — configure -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-4">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-widest mb-4">
-                Step 1 — Configure
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <div class="sm:col-span-1">
-                    <label class="block text-xs text-slate-400 mb-1.5">Difficulty</label>
-                    <select id="difficulty"
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
-                        <option value="easy">Easy</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                </div>
-                <div class="sm:col-span-1">
-                    <label class="block text-xs text-slate-400 mb-1.5">Questions</label>
-                    <input id="count" type="number" min="2" max="15" value="5"
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
-                </div>
-                <div class="sm:col-span-1 flex items-end">
-                    <div class="w-full">
-                        <label class="block text-xs text-slate-400 mb-1.5">Topic</label>
-                        <input id="topic" type="text" placeholder="e.g. World War II"
-                            class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
-                    </div>
-                </div>
-            </div>
-            <button onclick="buildPrompt()"
-                class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl text-sm font-semibold text-slate-200 transition-colors">
-                Build Prompt
-            </button>
-        </div>
-
-        <!-- Step 2 — copy prompt -->
-        <div id="step2" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-4">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-widest">
-                    Step 2 — Copy &amp; Run in Claude
-                </h2>
-                <button onclick="copyPrompt()"
-                    class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 rounded-lg text-xs font-semibold text-white transition-colors"
-                    id="copy-btn">
-                    Copy
-                </button>
-            </div>
-            <textarea id="generated-prompt" readonly rows="8"
-                class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono resize-none focus:outline-none select-all">
-            </textarea>
-            <p class="text-xs text-slate-500 mt-2">
-                Paste this into <a href="https://claude.ai" target="_blank" class="text-cyan-500 hover:text-cyan-400">claude.ai</a>
-                or any LLM, then copy the full JSON array it returns.
-            </p>
-        </div>
-
-        <!-- Step 3 — paste JSON and create -->
-        <div id="step3" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-widest mb-4">
-                Step 3 — Paste Response &amp; Create Quiz
-            </h2>
-            <form method="POST" action="/quiz/generate" id="create-form">
-                <input type="hidden" name="topic" id="form-topic">
-                <input type="hidden" name="player_id" value="{{ player_id or '' }}">
-
-                <textarea name="questions_json" id="json-paste" rows="10" required
-                    placeholder='Paste the JSON array here, e.g.&#10;[{"question_text": "...", "option_a": "...", ...}]'
-                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono resize-y focus:outline-none focus:border-cyan-500 placeholder-slate-600 mb-4">
-                </textarea>
-
-                <button type="submit"
-                    class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold text-white transition-colors">
-                    Create Quiz
-                </button>
-            </form>
-        </div>
-
-        <div class="mt-4 text-center">
-            <a href="/players" class="text-slate-500 hover:text-slate-400 text-sm transition-colors">
-                ← Back to Players
-            </a>
-        </div>
-
+    <div class="mb-8 fade-up">
+        <h1 class="text-xl font-bold text-white">Generate a Quiz</h1>
+        <p class="text-slate-400 text-sm mt-1.5">Configure a topic, copy the prompt, paste the AI response.</p>
     </div>
 
-    <script>
-        function buildPrompt() {
-            const topic = document.getElementById('topic').value.trim();
-            const count = parseInt(document.getElementById('count').value) || 5;
-            const difficulty = document.getElementById('difficulty').value;
+    {% if error %}
+    <div class="mb-6 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800/60 text-red-300 text-sm flex items-start gap-2.5 fade-up">
+        <span class="mt-0.5 shrink-0 text-red-400">⚠</span>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
 
-            if (!topic) {
-                document.getElementById('topic').focus();
-                return;
+    <!-- Step indicators -->
+    <div class="flex items-center gap-2 mb-6 fade-up">
+        <div id="ind-1" class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center text-xs font-bold text-white">1</span>
+            <span class="text-xs font-medium text-slate-300">Configure</span>
+        </div>
+        <div class="flex-1 h-px bg-slate-800"></div>
+        <div id="ind-2" class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400" id="ind-2-num">2</span>
+            <span class="text-xs font-medium text-slate-500" id="ind-2-lbl">Run in Claude</span>
+        </div>
+        <div class="flex-1 h-px bg-slate-800"></div>
+        <div id="ind-3" class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400" id="ind-3-num">3</span>
+            <span class="text-xs font-medium text-slate-500" id="ind-3-lbl">Create</span>
+        </div>
+    </div>
+
+    <!-- Step 1 -->
+    <div id="step1" class="card rounded-2xl p-6 mb-4 fade-up d1">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">Step 1 — Configure</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1.5">Difficulty</label>
+                <select id="difficulty" class="inp px-3 py-2.5 rounded-xl text-sm">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1.5">Questions</label>
+                <input id="count" type="number" min="2" max="15" value="5"
+                    class="inp px-3 py-2.5 rounded-xl text-sm">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1.5">Topic</label>
+                <input id="topic" type="text" placeholder="e.g. World War II"
+                    class="inp px-3 py-2.5 rounded-xl text-sm">
+            </div>
+        </div>
+        <button onclick="buildPrompt()"
+            class="btn-primary w-full py-2.5 rounded-xl text-sm font-semibold text-white">
+            Build Prompt
+        </button>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="step2" class="hidden card rounded-2xl p-6 mb-4">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Step 2 — Copy &amp; Run in Claude</h2>
+            <button onclick="copyPrompt()" id="copy-btn"
+                class="btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold text-white">
+                Copy
+            </button>
+        </div>
+        <textarea id="generated-prompt" readonly rows="8"
+            class="inp w-full px-4 py-3 rounded-xl text-xs font-mono resize-none">
+        </textarea>
+        <p class="text-xs text-slate-500 mt-3">
+            Paste this into
+            <a href="https://claude.ai" target="_blank" rel="noopener" class="text-cyan-500 hover:text-cyan-400 transition-colors">claude.ai</a>
+            or any LLM, then copy the full JSON array it returns.
+        </p>
+    </div>
+
+    <!-- Step 3 -->
+    <div id="step3" class="hidden card rounded-2xl p-6">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">Step 3 — Paste Response &amp; Create Quiz</h2>
+        <form method="POST" action="/quiz/generate" id="create-form">
+            <input type="hidden" name="topic" id="form-topic">
+            <input type="hidden" name="player_id" value="{{ player_id or '' }}">
+            <div class="mb-4">
+                <label class="block text-xs text-slate-400 mb-2">Paste JSON array from Claude</label>
+                <textarea name="questions_json" id="json-paste" rows="9" required
+                    placeholder='[{"question_text": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_option": "A"}]'
+                    class="inp w-full px-4 py-3 rounded-xl text-xs font-mono resize-y placeholder-slate-600">
+                </textarea>
+            </div>
+            <button type="submit"
+                class="btn-primary w-full py-3 rounded-2xl font-semibold text-white text-sm">
+                Create Quiz
+            </button>
+        </form>
+    </div>
+
+</main>
+
+<script>
+    function activateStep(num) {
+        [2, 3].forEach(n => {
+            const numEl = document.getElementById(`ind-${n}-num`);
+            const lblEl = document.getElementById(`ind-${n}-lbl`);
+            if (n <= num) {
+                numEl.className = "w-6 h-6 rounded-full bg-cyan-600 flex items-center justify-center text-xs font-bold text-white";
+                lblEl.className = "text-xs font-medium text-slate-300";
             }
+        });
+    }
 
-            const prompt =
+    function buildPrompt() {
+        const topic      = document.getElementById('topic').value.trim();
+        const count      = parseInt(document.getElementById('count').value) || 5;
+        const difficulty = document.getElementById('difficulty').value;
+
+        if (!topic) {
+            document.getElementById('topic').focus();
+            document.getElementById('topic').style.borderColor = '#ef4444';
+            return;
+        }
+        document.getElementById('topic').style.borderColor = '';
+
+        const prompt =
 `Generate ${count} multiple choice questions about "${topic}" at ${difficulty} difficulty.
 
 Return ONLY valid JSON — no explanation, no markdown fences. Use this exact schema:
@@ -139,23 +158,24 @@ Rules:
 - All four options must be plausible but only one correct
 - Questions should be clear and unambiguous`;
 
-            document.getElementById('generated-prompt').value = prompt;
-            document.getElementById('form-topic').value = topic;
-            document.getElementById('step2').classList.remove('hidden');
-            document.getElementById('step3').classList.remove('hidden');
-            document.getElementById('step2').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        document.getElementById('generated-prompt').value = prompt;
+        document.getElementById('form-topic').value = topic;
 
-        function copyPrompt() {
-            const ta = document.getElementById('generated-prompt');
-            navigator.clipboard.writeText(ta.value).then(() => {
-                const btn = document.getElementById('copy-btn');
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = 'Copy', 2000);
-            });
-        }
-    </script>
+        const s2 = document.getElementById('step2');
+        const s3 = document.getElementById('step3');
+        s2.classList.remove('hidden');
+        s3.classList.remove('hidden');
+        activateStep(3);
+        s2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 
-</body>
-
-</html>
+    function copyPrompt() {
+        const ta  = document.getElementById('generated-prompt');
+        const btn = document.getElementById('copy-btn');
+        navigator.clipboard.writeText(ta.value).then(() => {
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        });
+    }
+</script>
+{% endblock %}

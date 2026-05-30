@@ -1,4 +1,33 @@
-.venv/*
+# Virtual environment
+.venv/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Environment
 .env
+.env.*
+!.env.example
+
+# Alembic compiled
+alembic/versions/__pycache__/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Build / dist
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log

@@ -1,4 +1,5 @@
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.database.db import engine
 from app.models import Quizzes, Questions
@@ -7,10 +8,8 @@ from app.models import Quizzes, Questions
 def seed_quiz():
     with Session(engine) as session:
 
-        existing = session.exec(
-            select(Quizzes).where(
-                Quizzes.title == "Indian Polity Basics"
-            )
+        existing = session.scalars(
+            select(Quizzes).where(Quizzes.title == "Indian Polity Basics")
         ).first()
 
         if existing:
@@ -57,7 +56,6 @@ def seed_quiz():
         ]
 
         session.add_all(questions)
-
         session.commit()
 
         print("Quiz seeded successfully")

@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.database.db import get_session
 from app.models import Players, Questions, Quizzes
@@ -18,12 +19,12 @@ async def quiz(request: Request, session: SessionDep, quiz_id: int | None = None
     if quiz_id is not None:
         quiz_obj = session.get(Quizzes, quiz_id)
     else:
-        quiz_obj = session.exec(select(Quizzes)).first()
+        quiz_obj = session.scalars(select(Quizzes)).first()
 
     if not quiz_obj:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    questions = session.exec(
+    questions = session.scalars(
         select(Questions).where(Questions.quiz_id == quiz_obj.id)
     ).all()
 
@@ -50,7 +51,7 @@ async def quiz(request: Request, session: SessionDep, quiz_id: int | None = None
     if player_id is not None:
         current_player = session.get(Players, player_id)
         if current_player:
-            session_players = session.exec(
+            session_players = session.scalars(
                 select(Players)
                 .where(Players.user_id == current_player.user_id)
                 .order_by(Players.turn_order)
@@ -62,7 +63,7 @@ async def quiz(request: Request, session: SessionDep, quiz_id: int | None = None
         if raw_uid:
             try:
                 uid = int(raw_uid)
-                session_players = session.exec(
+                session_players = session.scalars(
                     select(Players)
                     .where(Players.user_id == uid)
                     .order_by(Players.turn_order)

@@ -2,7 +2,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.database.db import get_session
 from app.models import PlayerScores, Players, Quizzes, Users
@@ -47,9 +48,9 @@ async def create_players(request: Request, session: SessionDep):
         )
 
     # Remove previous players for this user before creating fresh ones
-    old_players = session.exec(select(Players).where(Players.user_id == user.id)).all()
+    old_players = session.scalars(select(Players).where(Players.user_id == user.id)).all()
     for p in old_players:
-        old_scores = session.exec(
+        old_scores = session.scalars(
             select(PlayerScores).where(PlayerScores.player_id == p.id)
         ).all()
         for s in old_scores:
@@ -70,19 +71,19 @@ async def players_page(request: Request, session: SessionDep):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
-    players = session.exec(
+    players = session.scalars(
         select(Players).where(Players.user_id == user.id).order_by(Players.turn_order)
     ).all()
 
-    quizzes = session.exec(select(Quizzes)).all()
+    quizzes = session.scalars(select(Quizzes)).all()
 
     # Build per-player score data
     player_data = []
     for p in players:
-        scores = session.exec(
+        scores = session.scalars(
             select(PlayerScores).where(PlayerScores.player_id == p.id)
         ).all()
-        received = session.exec(
+        received = session.scalars(
             select(PlayerScores).where(PlayerScores.passed_to_player_id == p.id)
         ).all()
         own_total = sum(s.score for s in scores if s.passed_to_player_id is None)

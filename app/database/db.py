@@ -1,12 +1,14 @@
-from sqlmodel import Session, SQLModel, create_engine
-from app import models  # noqa: F401 — registers models in metadata
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
+from app.models import Base
 from app.config import settings
 
 engine = create_engine(settings.database_url, echo=settings.db_echo)
 
 
 def create_db():
-    SQLModel.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
 
 
 def get_session():

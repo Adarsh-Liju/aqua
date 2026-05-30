@@ -2,7 +2,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.database.db import get_session
 from app.models import Users
@@ -24,7 +25,7 @@ async def register_user(
     username: str = Form(...),
     email: str = Form(...),
 ):
-    existing = session.exec(select(Users).where(Users.email == email)).first()
+    existing = session.scalars(select(Users).where(Users.email == email)).first()
     if existing:
         return templates.TemplateResponse(
             request, "register.html",
@@ -53,7 +54,7 @@ async def login_user(
     session: SessionDep,
     email: str = Form(...),
 ):
-    user = session.exec(select(Users).where(Users.email == email)).first()
+    user = session.scalars(select(Users).where(Users.email == email)).first()
     if not user:
         return templates.TemplateResponse(
             request, "login.html",
